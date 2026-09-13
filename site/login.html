@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вход — Static Visual</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap inner">
+    <a class="brand" href="index.html">
+      <img src="img/logo.png" alt="Static Visual">
+      <div><b>STATIC VISUAL</b><span>PRIVATE VISUAL SETUP</span></div>
+    </a>
+    <nav><a href="index.html">На главную</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card narrow">
+    <div class="tabs">
+      <button id="tabLogin" class="active btn-ghost">Вход</button>
+      <button id="tabRegister" class="btn-ghost">Регистрация</button>
+    </div>
+
+    <form id="form" autocomplete="on">
+      <div class="field">
+        <label>E-mail</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input id="password" type="password" placeholder="Минимум 6 символов" autocomplete="current-password" required>
+      </div>
+      <div class="field" id="discordField" style="display:none">
+        <label>Discord (для связи)</label>
+        <input id="discord" type="text" placeholder="username#0000 или ник">
+      </div>
+      <label class="remember"><input type="checkbox" id="remember" checked> Запомнить меня</label>
+      <button id="submitBtn" type="submit" class="btn-primary btn-full">Войти</button>
+      <div id="error" class="error"></div>
+    </form>
+
+    <div class="hint">После входа ключ отображается в <a href="account.html">кабинете</a>.</div>
+  </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="assets/auth.js"></script>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var refCode = (params.get("ref") || "").trim().toUpperCase();
+  var mode = refCode ? "register" : "login";
+  var $ = function (id) { return document.getElementById(id); };
+
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+
+  function setMode(m) {
+    mode = m;
+    var login = m === "login";
+    $("tabLogin").classList.toggle("active", login);
+    $("tabRegister").classList.toggle("active", !login);
+    $("discordField").style.display = login ? "none" : "block";
+    $("submitBtn").textContent = login ? "Войти" : "Создать аккаунт";
+    $("error").textContent = "";
+  }
+
+  $("tabLogin").addEventListener("click", function () { setMode("login"); });
+  $("tabRegister").addEventListener("click", function () { setMode("register"); });
+
+  // Пришли по чужой реф-ссылке — сразу форма регистрации + пометка
+  if (refCode) {
+    setMode("register");
+    var note = document.createElement("div");
+    note.className = "hint";
+    note.style.color = "var(--accent)";
+    note.style.marginTop = "0";
+    note.style.marginBottom = "16px";
+    note.textContent = "Регистрируетесь по реферальной ссылке: " + refCode;
+    $("form").insertBefore(note, $("form").querySelector("button"));
+  }
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("email").value.trim();
+    var password = $("password").value;
+    var discord = $("discord").value.trim();
+    var btn = $("submitBtn");
+    btn.disabled = true;
+    $("error").textContent = "";
+
+    var url = mode === "login" ? "/api/login" : "/api/register";
+    var payload = mode === "login"
+      ? { email: email, password: password }
+      : { email: email, password: password, discord: discord, ref: refCode || undefined };
+
+    fetch(apiURL(url), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        if (res.body && res.body.ok) {
+          svSetToken(res.body.token, $("remember").checked);
+          var isAdmin = !!(res.body.user && res.body.user.isAdmin);
+          toast(isAdmin ? "Админ — открываю панель..." : "Готово! Открываю кабинет...");
+          setTimeout(function () { location.href = isAdmin ? "admin.html" : "account.html"; }, 600);
+          return;
+        }
+        $("error").textContent = message(res.body && res.body.error, mode);
+      })
+      .catch(function () {
+        btn.disabled = false;
+        $("error").textContent = "Ошибка сети. Попробуйте ещё раз.";
+      });
+  });
+
+  function message(err, m) {
+    switch (err) {
+      case "bad_email": return "Некорректный e-mail.";
+      case "weak_password": return "Пароль слишком короткий (мин. 6 символов).";
+      case "email_taken": return "Этот e-mail уже зарегистрирован.";
+      case "bad_credentials": return "Неверный e-mail или пароль.";
+      default: return "Что-то пошло не так. Попробуйте ещё раз.";
+    }
+  }
+
+  // Уже вошли — сразу в кабинет/панель
+  var existing = svGetToken();
+  if (existing) {
+    fetch(apiURL("/api/me"), { method: "POST", headers: { "Authorization": "Bearer " + existing, "Content-Type": "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res && res.ok) {
+          location.href = (res.user && res.user.isAdmin) ? "admin.html" : "account.html";
+        } else {
+          svClearToken();
+        }
+      })
+      .catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
