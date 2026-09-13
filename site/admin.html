@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Static Visual</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .view { display: none; }
+  .view.show { display: block; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat.big .v { font-size: 24px; }
+  .stat.big .v small { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+  .chip { background: transparent; border: 1px solid var(--border2); color: var(--muted); }
+  .chip.on { background: #fff; color: #000; border-color: #fff; }
+  .reflink { color: var(--accent); cursor: pointer; text-decoration: underline dotted; }
+  .toplist { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .toprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 12px; }
+  .toprow .who { min-width: 0; }
+  .toprow .who b { font-size: 13px; color: #fff; }
+  .toprow .who .code { font-family: Consolas, monospace; font-size: 11px; color: var(--accent); margin-left: 8px; cursor: pointer; }
+  .toprow .num { font-size: 13px; color: #fff; font-weight: 800; white-space: nowrap; }
+  .toprow .num small { color: var(--muted); font-weight: 600; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div id="loading" class="view show" style="padding:60px 24px;text-align:center;color:#6A6A7C">Загрузка...</div>
+
+<div id="deny" class="view" style="min-height:100vh;align-items:center;justify-content:center;padding:24px">
+  <div class="card narrow" style="margin:0">
+    <a class="brand" href="index.html" style="margin-bottom:20px">
+      <img src="img/logo.png" alt="Static Visual">
+      <div><b>STATIC VISUAL</b><span>ADMIN PANEL</span></div>
+    </a>
+    <h2 id="denyTitle">Нет доступа</h2>
+    <p class="muted" id="denyText">Войдите в аккаунт администратора.</p>
+    <a id="denyBtn" class="btn-primary btn-full" href="login.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:16px">Войти</a>
+  </div>
+</div>
+
+<div id="app" class="view" hidden>
+  <header class="top">
+    <div class="wrap inner">
+      <a class="brand" href="index.html">
+        <img src="img/logo.png" alt="Static Visual">
+        <div><b>STATIC VISUAL</b><span>ADMIN PANEL</span></div>
+      </a>
+      <nav><a href="account.html">Кабинет</a><button id="logoutBtn" class="btn-ghost btn-mini">Выйти</button></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="stats" class="stats-grid"></div>
+
+    <div class="chips" id="tabs" style="margin-bottom:16px">
+      <button class="chip btn-mini on" data-tab="users">Пользователи</button>
+      <button class="chip btn-mini" data-tab="sales">Продажи и выплаты</button>
+    </div>
+
+    <div class="card" id="usersSection">
+      <div class="row">
+        <h3 style="margin:0;font-size:16px;color:#fff" class="grow">Пользователи · <span id="count">0</span></h3>
+        <input id="search" style="max-width:300px" placeholder="Поиск: e-mail / ключ / реф-код / от кого / Discord">
+        <button id="refreshBtn" class="btn-ghost">Обновить</button>
+      </div>
+      <div class="chips" id="chips">
+        <button class="chip btn-mini on" data-filter="all">Все</button>
+        <button class="chip btn-mini" data-filter="referred">Пришли по рефке</button>
+        <button class="chip btn-mini" data-filter="referrers">С рефералами</button>
+        <button class="chip btn-mini" data-filter="haskey">С ключом</button>
+        <button class="chip btn-mini" data-filter="nokey">Без ключа</button>
+        <button class="chip btn-mini" data-filter="active">Активированы</button>
+        <button class="chip btn-mini" data-filter="banned">Забанены</button>
+      </div>
+      <div id="tableWrap"></div>
+    </div>
+
+    <div class="card" id="topSection">
+      <h3 style="margin:0 0 4px;font-size:16px;color:#fff">Топ партнёров</h3>
+      <div id="topWrap" class="toplist"></div>
+    </div>
+
+    <div class="card" id="salesSection" style="display:none">
+      <div class="row">
+        <h3 style="margin:0;font-size:16px;color:#fff" class="grow">Продажи · выплаты</h3>
+        <input id="salesSearch" style="max-width:260px" placeholder="Поиск: покупатель / партнёр">
+        <button id="csvBtn" class="btn-ghost">CSV</button>
+        <button id="refreshSales" class="btn-ghost">Обновить</button>
+      </div>
+      <div id="affTotals"></div>
+      <div id="salesWrap"></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="assets/auth.js"></script>
+<script>
+(function () {
+  var API = window.apiURL("/api/admin");
+  var token = svGetToken();
+  var users = [], top = [], onlyReferrer = "";
+  var filter = "all";
+  var sales = [], salesAff = "", salesLoaded = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmt(ms) { return ms ? new Date(Number(ms)).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"; }
+  function toast(msg) { var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._t); t._t = setTimeout(function(){ t.classList.remove("show"); }, 2400); }
+  function copy(text) { if (navigator.clipboard) navigator.clipboard.writeText(text).then(function(){ toast("Скопировано"); }); else toast(text); }
+
+  function call(action, extra) {
+    return fetch(API, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }, body: JSON.stringify(Object.assign({ action: action }, extra || {})) })
+      .then(function (r) { return r.json(); });
+  }
+
+  function findUser(email) { for (var i = 0; i < users.length; i++) if (users[i].email === email) return users[i]; return null; }
+
+  function loadAll() {
+    call("stats").then(function (s) {
+      if (!s.ok) return;
+      renderStats(s.stats);
+      top = s.topAffiliates || [];
+      renderTop();
+    });
+    call("users").then(function (res) {
+      if (!res.ok) { toast("Ошибка загрузки"); return; }
+      users = res.users || [];
+      render();
+    });
+  }
+
+  function card(k, v, sub) {
+    return '<div class="stat big"><div class="k">' + k + '</div><div class="v">' + v + (sub ? ' <small>' + sub + '</small>' : '') + '</div></div>';
+  }
+  function renderStats(s) {
+    $("stats").innerHTML =
+      card("Всего", s.total)
+      + card("С ключом", s.withKey, "оплатили")
+      + card("Активно на ПК", s.active)
+      + card("По рефке зашло", s.referred)
+      + card("Рефереров", s.referrers)
+      + card("Новые 7д", s.new7)
+      + card("Забанено", s.banned);
+  }
+  function renderTop() {
+    if (!top.length) { $("topWrap").innerHTML = '<p class="muted">Пока никто ничего не продал по ссылке.</p>'; return; }
+    $("topWrap").innerHTML = top.map(function (t, i) {
+      return '<div class="toprow">'
+        + '<div class="who"><b>' + (i + 1) + '. ' + esc(t.email) + '</b>'
+        + '<span class="code" data-ref="' + esc(t.refCode) + '" title="Скопировать код">#' + esc(t.refCode) + '</span></div>'
+        + '<div class="num">$' + (t.commission || 0) + ' <small>· ' + (t.sales || 0) + ' продаж</small></div>'
+        + '</div>';
+    }).join("");
+  }
+
+  function passFilter(u) {
+    if (onlyReferrer) return (u.referredBy || "") === onlyReferrer;
+    switch (filter) {
+      case "referred": return !!u.referredBy;
+      case "referrers": return u.refCount > 0;
+      case "haskey": return u.hasKey;
+      case "nokey": return !u.hasKey;
+      case "active": return u.hwidBound;
+      case "banned": return u.revoked;
+      default: return true;
+    }
+  }
+
+  function render() {
+    var q = $("search").value.trim().toLowerCase();
+    var list = users.filter(function (u) {
+      if (!passFilter(u)) return false;
+      if (!q) return true;
+      return u.email.indexOf(q) >= 0 || (u.licenseKey || "").toLowerCase().indexOf(q) >= 0
+        || (u.refCode || "").toLowerCase().indexOf(q) >= 0 || (u.referredBy || "").toLowerCase().indexOf(q) >= 0
+        || (u.discord || "").toLowerCase().indexOf(q) >= 0 || (u.hwid || "").toLowerCase().indexOf(q) >= 0;
+    });
+    $("count").textContent = list.length;
+
+    if (!list.length) { $("tableWrap").innerHTML = '<div class="empty">Ничего не найдено.</div>'; return; }
+
+    var rows = list.map(function (u) {
+      var st = statusOf(u);
+      var hwid = u.hwid ? u.hwid.slice(0, 10) + "…" : "—";
+      var from = u.referredBy ? '<span class="reflink" data-from="' + esc(u.referredBy) + '">' + esc(u.referredBy.split("@")[0]) + '</span>' : "—";
+      var refs = u.refCount
+        ? '<span class="reflink" data-refby="' + esc(u.email) + '">' + u.refCount + ' <span style="color:#6A6A7C">· ' + u.refConverted + ' к</span></span>'
+        : "—";
+      return '<tr>'
+        + '<td class="mono" style="font-size:12px">' + esc(u.email) + (u.discord ? '<div class="muted" style="font-weight:400">' + esc(u.discord) + '</div>' : '') + '</td>'
+        + '<td><span class="badge ' + st.cls + '">' + st.label + '</span></td>'
+        + '<td class="mono" style="font-size:11px">' + (u.licenseKey ? esc(u.licenseKey) : '—') + '</td>'
+        + '<td class="mono" style="font-size:11px;color:#5BA4FF">' + (u.refCode ? '<span class="reflink" data-copyref="' + esc(u.refCode) + '">' + esc(u.refCode) + '</span>' : '—') + '</td>'
+        + '<td style="font-size:12px">' + from + '</td>'
+        + '<td style="font-size:12px">' + refs + '</td>'
+        + '<td class="hwid hide-m" title="' + esc(u.hwid || '') + '">' + esc(hwid) + '</td>'
+        + '<td class="muted hide-m">' + fmt(u.lastSeen) + '</td>'
+        + '<td><div class="actions">'
+        + (u.hasKey ? '<button class="btn-ghost btn-mini" data-act="copykey" data-email="' + esc(u.email) + '">Ключ</button>' : '')
+        + '<button class="btn-primary btn-mini" data-act="issue" data-email="' + esc(u.email) + '">' + (u.hasKey ? 'Новый' : 'Выдать ключ') + '</button>'
+        + '<button class="btn-ghost btn-mini" data-act="setref" data-email="' + esc(u.email) + '" data-cur="' + esc(u.referredBy || '') + '" title="Кто привёл">Реф</button>'
+        + (u.hwidBound ? '<button class="btn-ghost btn-mini" data-act="reset" data-email="' + esc(u.email) + '">Сброс ПК</button>' : '')
+        + (u.revoked ? '<button class="btn-ghost btn-mini" data-act="unban" data-email="' + esc(u.email) + '">Разбан</button>' : '<button class="btn-danger" data-act="ban" data-email="' + esc(u.email) + '">Бан</button>')
+        + '<button class="btn-danger" data-act="delete" data-email="' + esc(u.email) + '">✕</button>'
+        + '</div></td></tr>';
+    }).join("");
+
+    $("tableWrap").innerHTML = '<table><thead><tr><th>Пользователь</th><th>Статус</th><th>Ключ</th><th>Реф-код</th><th>От кого</th><th>Реф-ры</th><th class="hide-m">HWID</th><th class="hide-m">Вход</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function statusOf(u) {
+    if (u.revoked) return { cls: "banned", label: "Забанен" };
+    if (u.hwidBound) return { cls: "active", label: "Активен" };
+    if (u.hasKey) return { cls: "free", label: "Ключ выдан" };
+    return { cls: "free", label: "Без ключа" };
+  }
+
+  function setFilter(f) {
+    filter = f; onlyReferrer = "";
+    var chips = $("chips").querySelectorAll(".chip");
+    for (var i = 0; i < chips.length; i++) chips[i].classList.toggle("on", chips[i].getAttribute("data-filter") === f);
+    render();
+  }
+
+  function action(act, email, el) {
+    var u = findUser(email);
+    if (act === "copykey") { if (u && u.licenseKey) copy(u.licenseKey); return; }
+    if (act === "setref") {
+      var cur = (el && el.getAttribute("data-cur")) || "";
+      var ref = prompt("Кто привёл этого пользователя?\nВведи e-mail партнёра (или пусто, чтобы убрать).", cur);
+      if (ref === null) return;
+      ref = ref.trim().toLowerCase();
+      call("setref", { email: email, referrer: ref }).then(function (r) {
+        if (r.ok) { toast(ref ? ("Привязано к " + ref + (r.reassigned ? " (продажа перенесена)" : "")) : "Реферер убран"); loadAll(); }
+        else if (r.error === "sale_paid") toast("Нельзя: выплата уже отмечена — сначала «Отмена» продажи");
+        else if (r.error === "referrer_not_found") toast("Нет такого партнёра (нужен его аккаунт)");
+        else if (r.error === "self_referral") toast("Нельзя привязать к самому себе");
+        else toast("Ошибка");
+      });
+      return;
+    }
+    if (act === "issue") {
+      if (!confirm((u && u.hasKey) ? "Сгенерировать НОВЫЙ ключ для " + email + "? Старый перестанет работать." : "Выдать ключ пользователю " + email + "?")) return;
+      call("issue", { email: email }).then(function (r) { if (r.ok) { copy(r.key); toast("Ключ выдан и скопирован"); loadAll(); } else toast("Ошибка"); });
+      return;
+    }
+    if (act === "reset") { if (!confirm("Сбросить привязку ПК для " + email + "?")) return; call("reset", { email: email }).then(function (r) { toast(r.ok ? "Сброшено" : "Ошибка"); loadAll(); }); return; }
+    if (act === "ban" || act === "unban") {
+      var revoke = act === "ban";
+      if (revoke && !confirm("Забанить " + email + "?")) return;
+      call("revoke", { email: email, revoked: revoke }).then(function (r) { toast(r.ok ? (revoke ? "Забанен" : "Разбанен") : "Ошибка"); loadAll(); });
+      return;
+    }
+    if (act === "delete") { if (!confirm("Удалить пользователя " + email + " навсегда?")) return; call("delete", { email: email }).then(function (r) { toast(r.ok ? "Удалён" : "Ошибка"); loadAll(); }); }
+  }
+
+  function money(n) { return "$" + (Number(n) || 0).toFixed(2); }
+  function loadSales() { call("sales").then(function (res) { if (!res.ok) { toast("Ошибка продаж"); return; } sales = res.sales || []; renderAffTotals(res); renderSales(); salesLoaded = true; }); }
+  function renderAffTotals(res) {
+    var t = res.totals || {};
+    function c(k, v) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
+    var head = '<div class="grid2" style="margin:8px 0 14px">' + c("Выручка", money(t.gross)) + c("Комиссии", money(t.commissionTotal)) + c("Выплачено", money(t.paid)) + c("К выплате", money(t.pending)) + c("Продаж", t.saleCount || 0) + '</div>';
+    var list = res.byAffiliate || [];
+    var rows = list.map(function (a) {
+      return '<tr><td class="mono" style="font-size:12px"><span class="reflink" data-saff="' + esc(a.email) + '">' + esc(a.email) + '</span></td><td>' + a.sales + '</td><td>' + money(a.revenue) + '</td><td><b>' + money(a.commission) + '</b></td><td>' + money(a.paid) + '</td><td>' + (a.pending > 0 ? '<span class="badge free">' + money(a.pending) + '</span>' : '<span class="badge active">закрыто</span>') + '</td><td><div class="actions"><button class="btn-primary btn-mini" data-sact="markall" data-email="' + esc(a.email) + '">Выплатить всё</button></div></td></tr>';
+    }).join("");
+    var table = list.length ? '<table><thead><tr><th>Партнёр</th><th>Продаж</th><th>Выручка</th><th>Комиссия</th><th>Выплачено</th><th>К выплате</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p class="muted">Пока нет продаж по партнёрам.</p>';
+    $("affTotals").innerHTML = head + table;
+  }
+  function renderSales() {
+    var q = $("salesSearch").value.trim().toLowerCase();
+    var list = sales.filter(function (s) {
+      if (salesAff && s.affiliateEmail !== salesAff) return false;
+      if (!q) return true;
+      return (s.buyerEmail || "").toLowerCase().indexOf(q) >= 0 || (s.affiliateEmail || "").toLowerCase().indexOf(q) >= 0;
+    });
+    var rows = list.map(function (s) {
+      var v = !!s.voided;
+      var st = v ? '<span class="badge banned">отменена</span>' : (s.paid ? '<span class="badge active">выплачено</span>' : '<span class="badge free">ждёт</span>');
+      return '<tr' + (v ? ' style="opacity:.5"' : '') + '>'
+        + '<td class="muted hide-m">' + fmt(s.createdAt) + '</td>'
+        + '<td class="mono" style="font-size:12px">' + esc(s.buyerEmail) + '</td>'
+        + '<td class="mono" style="font-size:12px">' + (s.affiliateEmail ? '<span class="reflink" data-saff="' + esc(s.affiliateEmail) + '">' + esc(s.affiliateEmail) + '</span>' : '<span class="muted">органика</span>') + '</td>'
+        + '<td>$' + (s.amount || 0) + '</td><td><b>$' + (s.commission || 0) + '</b><td>' + st + '</td>'
+        + '<td><div class="actions">'
+        + (!v && !s.paid ? '<button class="btn-primary btn-mini" data-sact="paid" data-id="' + esc(s.id) + '">Выплатил</button>' : '')
+        + (v ? '<button class="btn-ghost btn-mini" data-sact="unvoid" data-id="' + esc(s.id) + '">Вернуть</button>' : '<button class="btn-danger" data-sact="void" data-id="' + esc(s.id) + '">Отмена</button>')
+        + '</div></td></tr>';
+    }).join("");
+    $("salesWrap").innerHTML = list.length ? '<table><thead><tr><th class="hide-m">Дата</th><th>Покупатель</th><th>Партнёр</th><th>Сумма</th><th>20%</th><th>Статус</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>' : '<div class="empty">Продаж нет.</div>';
+  }
+  function exportCsv() {
+    var lines = ["date,buyer,affiliate,amount,commission,paid,voided"];
+    for (var i = 0; i < sales.length; i++) { var s = sales[i]; lines.push([new Date(s.createdAt).toISOString(), '"' + (s.buyerEmail || "").replace(/"/g, '""') + '"', '"' + (s.affiliateEmail || "") + '"', s.amount, s.commission, s.paid ? "yes" : "", s.voided ? "yes" : ""].join(",")); }
+    var blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "static-visual-sales.csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  function sact(act, id) {
+    if (act === "paid") { call("markpaid", { saleId: id }).then(function (r) { toast(r.ok ? "Отмечено выплаченным" : "Ошибка"); loadSales(); }); return; }
+    if (act === "void") { call("void", { saleId: id, voided: true }).then(loadSales); return; }
+    if (act === "unvoid") { call("void", { saleId: id, voided: false }).then(loadSales); return; }
+  }
+
+  // events
+  $("logoutBtn").addEventListener("click", function () { fetch(window.apiURL("/api/logout"), { method: "POST", headers: { "Authorization": "Bearer " + token } }).catch(function(){}); svClearToken(); location.href = "index.html"; });
+  $("refreshBtn").addEventListener("click", loadAll);
+  $("search").addEventListener("input", render);
+  $("tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tab]"); if (!b) return;
+    var tab = b.getAttribute("data-tab"); var chips = $("tabs").querySelectorAll(".chip");
+    for (var i = 0; i < chips.length; i++) chips[i].classList.toggle("on", chips[i].getAttribute("data-tab") === tab);
+    var showU = tab === "users";
+    $("usersSection").style.display = showU ? "" : "none";
+    $("topSection").style.display = showU ? "" : "none";
+    $("salesSection").style.display = showU ? "none" : "";
+    if (!showU && !salesLoaded) loadSales();
+  });
+  $("refreshSales").addEventListener("click", loadSales);
+  $("salesSearch").addEventListener("input", renderSales);
+  $("csvBtn").addEventListener("click", exportCsv);
+  $("affTotals").addEventListener("click", function (e) {
+    var mk = e.target.closest('[data-sact="markall"]');
+    if (mk) { if (confirm("Отметить все незакрытые выплаты для " + mk.getAttribute("data-email") + "?")) call("markpaid", { affiliateEmail: mk.getAttribute("data-email") }).then(function (r) { toast(r.ok ? "Отмечено (" + (r.marked || 0) + ")" : "Ошибка"); loadSales(); }); return; }
+    var sa = e.target.closest("[data-saff]"); if (sa) { salesAff = salesAff === sa.getAttribute("data-saff") ? "" : sa.getAttribute("data-saff"); renderSales(); }
+  });
+  $("salesWrap").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-sact]"); if (b) { sact(b.getAttribute("data-sact"), b.getAttribute("data-id")); return; }
+    var sa = e.target.closest("[data-saff]"); if (sa) { salesAff = salesAff === sa.getAttribute("data-saff") ? "" : sa.getAttribute("data-saff"); renderSales(); }
+  });
+  $("chips").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (b) setFilter(b.getAttribute("data-filter")); });
+
+  $("tableWrap").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]"); if (b) { action(b.getAttribute("data-act"), b.getAttribute("data-email"), b); return; }
+    var rf = e.target.closest("[data-refby]"); if (rf) { onlyReferrer = rf.getAttribute("data-refby"); for (var i=0;i<$("chips").querySelectorAll(".chip").length;i++) $("chips").querySelectorAll(".chip")[i].classList.remove("on"); toast("Фильтр: приглашённые " + onlyReferrer); render(); return; }
+    var fm = e.target.closest("[data-from]"); if (fm) { $("search").value = fm.getAttribute("data-from"); render(); return; }
+    var cr = e.target.closest("[data-copyref]"); if (cr) { copy(cr.getAttribute("data-copyref")); return; }
+  });
+
+  $("topWrap").addEventListener("click", function (e) {
+    var c = e.target.closest("[data-ref]"); if (c) copy(c.getAttribute("data-ref"));
+  });
+
+  // boot
+  if (!token) { denyView("Вход", "Войдите в аккаунт администратора.", "Войти", "login.html"); return; }
+  fetch(window.apiURL("/api/me"), { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" } })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (res && res.ok && res.user && res.user.isAdmin) { show("app"); loadAll(); }
+      else if (res && res.ok) { denyView("Нет доступа", res.user.email + " — не администратор.", "В кабинет", "account.html"); }
+      else { denyView("Сессия истекла", "Войдите заново.", "Войти", "login.html"); }
+    })
+    .catch(function () { denyView("Ошибка сети", "Не удалось проверить доступ.", "Обновить", "admin.html"); });
+
+  function show(id) { ["loading", "deny", "app"].forEach(function (v) { var el = $(v); if (v === id) { el.classList.add("show"); el.style.display = (v === "deny" ? "flex" : "block"); el.hidden = false; } else { el.classList.remove("show"); el.style.display = "none"; el.hidden = true; } }); }
+  function denyView(title, text, btn, href) { $("denyTitle").textContent = title; $("denyText").textContent = text; $("denyBtn").textContent = btn; $("denyBtn").href = href; show("deny"); }
+})();
+</script>
+</body>
+</html>
