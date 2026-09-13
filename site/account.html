@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кабинет — Static Visual</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap inner">
+    <a class="brand" href="index.html">
+      <img src="img/logo.png" alt="Static Visual">
+      <div><b>STATIC VISUAL</b><span>ЛИЧНЫЙ КАБИНЕТ</span></div>
+    </a>
+    <nav>
+      <a href="index.html">На главную</a>
+      <a href="#" id="logoutLink">Выйти</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <h1>Личный кабинет</h1>
+  <p class="muted" id="hello">Загрузка...</p>
+
+  <div class="card" style="margin-top:22px">
+    <h2>Лицензия</h2>
+    <div id="licenseArea"></div>
+  </div>
+
+  <div class="card">
+    <h2>Аккаунт</h2>
+    <div class="grid2">
+      <div class="stat"><div class="k">E-mail</div><div class="v" id="statEmail">—</div></div>
+      <div class="stat"><div class="k">Тариф</div><div class="v" id="statPlan">—</div></div>
+      <div class="stat"><div class="k">Статус</div><div class="v" id="statStatus">—</div></div>
+      <div class="stat"><div class="k">Discord</div><div class="v" id="statDiscord">—</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="partnerCard" style="display:none">
+    <h2>Партнёрская программа</h2>
+    <div id="partnerArea" class="muted">Загрузка...</div>
+  </div>
+
+  <div class="card">
+    <h2>Пригласить друга</h2>
+    <div id="refArea" class="muted">Загрузка...</div>
+  </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="assets/auth.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var token = svGetToken();
+  var BUY_URL = "https://discord.gg/aU7uKCxv8";
+
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._t); t._t = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+  function copy(text) {
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { toast("Ключ скопирован"); });
+    else toast(text);
+  }
+  function guard() {
+    if (!token) { location.href = "login.html"; return false; }
+    return true;
+  }
+
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ "Authorization": "Bearer " + token, "Content-Type": "application/json" }, opts.headers || {});
+    return fetch(apiURL(path), opts).then(function (r) {
+      if (r.status === 401) { svClearToken(); location.href = "login.html"; throw new Error("unauthorized"); }
+      return r.json();
+    });
+  }
+
+  function render(u) {
+    $("hello").textContent = "Привет, " + u.email;
+    $("statEmail").textContent = u.email;
+    $("statPlan").textContent = u.plan === "lifetime" ? "Lifetime (навсегда)" : "Не куплено";
+    $("statDiscord").textContent = u.discord || "—";
+
+    var statusEl = $("statStatus");
+    if (u.revoked) { statusEl.innerHTML = '<span class="badge banned">Заблокирован</span>'; }
+    else if (u.hwidBound) { statusEl.innerHTML = '<span class="badge active">Активирован на ПК</span>'; }
+    else if (u.hasKey) { statusEl.innerHTML = '<span class="badge free">Ключ не активирован</span>'; }
+    else { statusEl.innerHTML = '<span class="badge free">Нет ключа</span>'; }
+
+    if (!u.hasKey) {
+      $("licenseArea").innerHTML =
+        '<p class="muted" style="margin-bottom:16px">Нажми «Купить доступ» — откроется Discord. Оплати, назови в тикете свой e-mail, и ключ появится здесь.</p>'
+        + '<a class="btn-primary btn-full" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + BUY_URL + '" target="_blank" rel="noopener">Купить доступ — $5.99</a>';
+      return;
+    }
+
+    var boundNote = u.hwidBound
+      ? '<p class="muted" style="margin-top:12px">Ключ привязан к одному компьютеру. Чтобы сменить ПК — напишите в <a href="' + BUY_URL + '" target="_blank" rel="noopener">Discord</a>.</p>'
+      : '<p class="muted" style="margin-top:12px">Введите этот ключ в приложении — он привяжется к вашему ПК.</p>';
+
+    $("licenseArea").innerHTML =
+      '<p class="muted" style="margin-bottom:10px">Ваш лицензионный ключ</p>'
+      + '<div class="key-box" id="keyBox">' + u.licenseKey + '</div>'
+      + '<div style="margin-top:14px"><button class="btn-primary btn-mini" id="copyBtn">Скопировать ключ</button></div>'
+      + boundNote
+        + '<div style="margin-top:18px"><a class="btn-primary btn-full" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="' + apiURL("/download/app?token=") + token + '">Скачать приложение (Windows)</a></div>';
+
+    $("copyBtn").addEventListener("click", function () { copy(u.licenseKey); });
+  }
+
+  function loadPartner() {
+    api("/api/affiliate").then(function (a) {
+      if (!a || !a.ok) { $("partnerArea").textContent = "Недоступно."; return; }
+      var s = a.stats;
+      var link = location.origin + "/login.html?ref=" + a.refCode;
+      function st(k, v) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
+      var html =
+        '<p class="muted" style="margin-bottom:10px">Ставка ' + Math.round(a.rate * 100) + '% с каждой подписки приведённых тобой. Данные берёт тот же журнал, что видит владелец.</p>'
+        + '<div class="key-box" style="font-size:14px">' + link + '</div>'
+        + '<div style="margin-top:12px"><button class="btn-primary btn-mini" id="pCopy">Скопировать ссылку</button></div>'
+        + '<div class="grid2" style="margin-top:16px">'
+        + st("Заработано", "$" + s.earned) + st("К выплате", "$" + s.pending) + st("Выплачено", "$" + s.paid) + st("Продаж", s.sales) + st("Приведено", s.registrations)
+        + '</div>';
+      if (a.sales.length) {
+        html += '<table style="margin-top:14px"><thead><tr><th>Покупатель</th><th>Сумма</th><th>Твой %</th><th>Статус</th></tr></thead><tbody>'
+          + a.sales.map(function (x) {
+              return '<tr><td class="mono" style="font-size:12px">' + x.buyer + '</td><td>$' + x.amount + '</td><td>$' + x.commission + '</td><td>'
+                + (x.paid ? '<span class="badge active">выплачено</span>' : '<span class="badge free">ждёт выплаты</span>') + '</td></tr>';
+            }).join("") + '</tbody></table>';
+      }
+      $("partnerArea").innerHTML = html;
+      $("pCopy").addEventListener("click", function () {
+        if (navigator.clipboard) navigator.clipboard.writeText(link).then(function () { toast("Ссылка скопирована"); });
+        else toast(link);
+      });
+    });
+  }
+
+  function loadRef() {
+    api("/api/referrals").then(function (r) {
+      if (!r || !r.ok) { $("refArea").textContent = "Недоступно."; return; }
+      var link = location.origin + "/login.html?ref=" + r.refCode;
+      var html =
+        '<p class="muted" style="margin-bottom:10px">Делись ссылкой — друг регистрируется по ней, и ты видишь, кто пришёл.</p>'
+        + '<div class="key-box" style="font-size:16px">' + r.refCode + '</div>'
+        + '<div class="row" style="margin-top:12px"><input id="refLink" readonly value="' + link + '" style="flex:1"><button class="btn-primary btn-mini" id="refCopy">Скопировать</button></div>'
+        + '<p class="muted" style="margin-top:14px">Приглашено: <b style="color:#fff">' + r.count + '</b> · оплатили: <b style="color:#fff">' + r.converted + '</b></p>';
+      if (r.invited && r.invited.length) {
+        html += '<table><tbody>' + r.invited.map(function (u) {
+          return '<tr><td class="mono" style="font-size:12px">' + u.email + '</td><td>'
+            + (u.hasKey ? '<span class="badge active">купил</span>' : '<span class="badge free">без ключа</span>') + '</td></tr>';
+        }).join("") + '</tbody></table>';
+      }
+      $("refArea").innerHTML = html;
+      $("refCopy").addEventListener("click", function () {
+        if (navigator.clipboard) navigator.clipboard.writeText(link).then(function () { toast("Ссылка скопирована"); });
+        else { var i = $("refLink"); i.select(); document.execCommand("copy"); toast("Ссылка скопирована"); }
+      });
+    });
+  }
+
+  $("logoutLink").addEventListener("click", function (e) {
+    e.preventDefault();
+    api("/api/logout", { method: "POST" }).catch(function () {});
+    svClearToken();
+    location.href = "index.html";
+  });
+
+  if (guard()) {
+    api("/api/me").then(function (res) {
+      if (res && res.ok) {
+        render(res.user);
+        loadRef();
+        if (res.user.isAffiliate) { $("partnerCard").style.display = "block"; loadPartner(); }
+      } else location.href = "login.html";
+    }).catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
