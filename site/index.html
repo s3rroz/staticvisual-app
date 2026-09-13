@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Static Visual — Rust Visual Settings & Color Profiles</title>
+<meta name="description" content="Чистая цветокоррекция для Rust: насыщенность, гамма, Night Mode, профили. Один платёж $5.99 — навсегда.">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --black:   #000000;
+  --bg:      #06060A;
+  --surface: #0E0E14;
+  --surface2:#141420;
+  --border:  rgba(255,255,255,.06);
+  --border2: rgba(255,255,255,.12);
+  --text:    #E8E8F0;
+  --muted:   #5C5C6E;
+  --accent:  #5BA4FF;
+  --accent2: #8B6FFF;
+  --glow:    rgba(91,164,255,.28);
+  --cream:   #F2EFE6;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  cursor: none;
+}
+
+/* ══════════════════════════════════════
+   CURSOR
+══════════════════════════════════════ */
+#cursor-dot {
+  position: fixed; top: 0; left: 0; z-index: 9999;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cream);
+  pointer-events: none;
+  transform: translate(-50%,-50%);
+  transition: transform .08s ease, background .2s;
+  mix-blend-mode: difference;
+}
+#cursor-ring {
+  position: fixed; top: 0; left: 0; z-index: 9998;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(242,239,230,.35);
+  pointer-events: none;
+  transform: translate(-50%,-50%);
+  transition: width .25s ease, height .25s ease, border-color .25s ease, transform .12s ease;
+}
+#cursor-trail {
+  position: fixed; top: 0; left: 0; z-index: 9997;
+  pointer-events: none;
+  width: 100%; height: 100%;
+}
+.trail-dot {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%,-50%);
+}
+body.cursor-hover #cursor-ring {
+  width: 56px; height: 56px;
+  border-color: rgba(91,164,255,.6);
+}
+body.cursor-click #cursor-dot {
+  transform: translate(-50%,-50%) scale(2.5);
+  background: var(--accent);
+}
+
+/* ══════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════ */
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+
+/* ══════════════════════════════════════
+   HEADER
+══════════════════════════════════════ */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(24px) saturate(160%);
+  background: rgba(0,0,0,.7);
+  transition: background .3s;
+}
+.nav { display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand img { width: 34px; height: 34px; border-radius: 8px; object-fit: cover; }
+.brand-text b { display: block; font-size: 14px; font-weight: 700; letter-spacing: .06em; color: #fff; }
+.brand-text span { font-size: 9px; letter-spacing: .18em; color: var(--muted); font-weight: 500; }
+
+nav { display: flex; align-items: center; gap: 2px; }
+nav a {
+  color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 8px 14px; border-radius: 7px;
+  transition: color .2s, background .2s;
+  position: relative;
+}
+nav a::after {
+  content: '';
+  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 1px; background: var(--accent);
+  transition: width .25s ease;
+  border-radius: 1px;
+}
+nav a:hover { color: #fff; }
+nav a:hover::after { width: 20px; }
+
+.nav-cta {
+  background: #fff !important; color: #000 !important;
+  font-weight: 700 !important; padding: 9px 20px !important;
+  border-radius: 8px !important;
+  transition: opacity .15s, transform .15s, box-shadow .15s !important;
+  box-shadow: 0 0 0 0 rgba(255,255,255,0) !important;
+}
+.nav-cta::after { display: none !important; }
+.nav-cta:hover {
+  opacity: .92 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 8px 24px rgba(255,255,255,.12) !important;
+}
+
+/* ══════════════════════════════════════
+   HERO
+══════════════════════════════════════ */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  position: relative; overflow: hidden;
+  padding: 130px 28px 90px;
+}
+
+/* Noise texture overlay */
+.hero::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 200px;
+  opacity: .4;
+}
+
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+}
+.hero-bg canvas { width: 100%; height: 100%; display: block; }
+
+/* top glow */
+.hero-glow {
+  position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+  width: 1000px; height: 800px;
+  background: radial-gradient(ellipse, rgba(91,164,255,.1) 0%, transparent 65%);
+  pointer-events: none; z-index: 0;
+}
+
+.hero-content { position: relative; z-index: 2; }
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--border2);
+  background: rgba(255,255,255,.04);
+  backdrop-filter: blur(12px);
+  padding: 7px 18px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; letter-spacing: .14em;
+  color: var(--muted); margin-bottom: 36px;
+  transition: border-color .3s, color .3s;
+}
+.hero-eyebrow:hover { border-color: rgba(91,164,255,.4); color: var(--accent); }
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #3DDF8F;
+  box-shadow: 0 0 10px #3DDF8F;
+  animation: livepulse 2.4s ease-in-out infinite;
+}
+@keyframes livepulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+.hero h1 {
+  font-size: clamp(48px, 8.5vw, 96px);
+  font-weight: 900; line-height: .97;
+  letter-spacing: -.05em; color: #fff;
+  margin-bottom: 30px; max-width: 900px;
+}
+.hero h1 .gradient-text {
+  background: linear-gradient(125deg, #6AB8FF 0%, #9B82FF 55%, #C46BFF 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.hero-sub {
+  font-size: 17px; font-weight: 400; color: var(--muted);
+  max-width: 500px; line-height: 1.75; margin-bottom: 48px;
+}
+
+.hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+.btn-white {
+  display: inline-flex; align-items: center; gap: 9px;
+  background: #fff; color: #000;
+  font-size: 14px; font-weight: 700;
+  padding: 15px 30px; border-radius: 10px;
+  text-decoration: none;
+  position: relative; overflow: hidden;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.btn-white::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.4) 100%);
+  opacity: 0; transition: opacity .3s;
+}
+.btn-white:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(255,255,255,.15); }
+.btn-white:hover::before { opacity: 1; }
+
+.btn-outline {
+  display: inline-flex; align-items: center; gap: 9px;
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--text); font-size: 14px; font-weight: 600;
+  padding: 15px 30px; border-radius: 10px; text-decoration: none;
+  transition: border-color .2s, color .2s, transform .2s, background .2s;
+}
+.btn-outline:hover {
+  border-color: rgba(255,255,255,.3);
+  background: rgba(255,255,255,.05);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* stat strip */
+.hero-stats {
+  display: flex; align-items: center; justify-content: center;
+  gap: 40px; margin-top: 72px; flex-wrap: wrap;
+}
+.hero-stats .divider { width: 1px; height: 32px; background: var(--border2); }
+.stat-item { text-align: center; }
+.stat-num { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.03em; }
+.stat-lbl { font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 2px; letter-spacing: .06em; }
+
+/* ══════════════════════════════════════
+   MARQUEE
+══════════════════════════════════════ */
+.marquee-wrap {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 0; overflow: hidden;
+  background: var(--bg);
+  position: relative;
+}
+.marquee-wrap::before, .marquee-wrap::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2;
+  pointer-events: none;
+}
+.marquee-wrap::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+.marquee-wrap::after { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+.marquee-track { display: flex; gap: 0; animation: marquee 22s linear infinite; width: max-content; }
+.marquee-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 32px;
+  font-size: 12px; font-weight: 600; letter-spacing: .1em; color: var(--muted);
+  white-space: nowrap;
+}
+.marquee-item .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .5; }
+@keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* ══════════════════════════════════════
+   SECTIONS COMMON
+══════════════════════════════════════ */
+.section { padding: 110px 0; border-top: 1px solid var(--border); }
+
+.section-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(91,164,255,.08);
+  border: 1px solid rgba(91,164,255,.18);
+  padding: 5px 14px; border-radius: 100px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em;
+  color: var(--accent); margin-bottom: 22px;
+}
+.section-label-center { display: flex; justify-content: center; }
+
+.section-head {
+  font-size: clamp(28px, 4.5vw, 46px);
+  font-weight: 800; letter-spacing: -.035em; line-height: 1.08;
+  color: #fff; margin-bottom: 16px;
+}
+.section-sub {
+  font-size: 15px; color: var(--muted); max-width: 480px; line-height: 1.75;
+}
+
+/* ══════════════════════════════════════
+   FEATURES — bento asymmetric
+══════════════════════════════════════ */
+.feat-bento {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  margin-top: 60px;
+}
+
+/* base card */
+.fc {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  padding: 34px 32px;
+  position: relative; overflow: hidden;
+  transition: border-color .3s, transform .3s ease, box-shadow .3s ease;
+}
+.fc::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(91,164,255,.07) 0%, transparent 55%);
+  opacity: 0; transition: opacity .4s;
+  pointer-events: none;
+}
+.fc:hover { border-color: rgba(91,164,255,.3); transform: translateY(-3px); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+.fc:hover::before { opacity: 1; }
+
+/* hero card — spans 2 rows */
+.fc-hero { grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: space-between; min-height: 340px; }
+.fc-hero::after {
+  content: '';
+  position: absolute; bottom: -40px; right: -40px;
+  width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(91,164,255,.12), transparent 70%);
+  pointer-events: none;
+}
+
+/* feature icon */
+.feat-ico {
+  width: 50px; height: 50px; border-radius: 14px;
+  background: rgba(91,164,255,.08);
+  border: 1px solid rgba(91,164,255,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; margin-bottom: 22px; flex-shrink: 0;
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
+}
+.fc:hover .feat-ico { transform: scale(1.12) rotate(-4deg); box-shadow: 0 10px 30px rgba(91,164,255,.25); }
+
+.fc h3 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.fc p  { font-size: 13.5px; color: var(--muted); line-height: 1.72; }
+
+/* hero card typography bump */
+.fc-hero h3 { font-size: 22px; margin-bottom: 14px; }
+.fc-hero p  { font-size: 15px; max-width: 280px; }
+
+/* animated accent line at bottom of hero card */
+.fc-hero-bar {
+  height: 2px; border-radius: 2px; margin-top: 32px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  width: 48px;
+  transition: width .4s ease;
+}
+.fc-hero:hover .fc-hero-bar { width: 100%; }
+
+/* compact cards */
+.fc-sm { padding: 28px 26px; }
+.fc-sm h3 { font-size: 14px; }
+.fc-sm p  { font-size: 13px; }
+.fc-sm .feat-ico { width: 42px; height: 42px; font-size: 20px; margin-bottom: 16px; border-radius: 11px; }
+
+/* glow border card variant */
+.fc-glow {
+  background: linear-gradient(145deg, rgba(91,164,255,.05), rgba(139,111,255,.05));
+}
+.fc-glow::after {
+  content: '';
+  position: absolute; inset: -1px; border-radius: 19px; z-index: -1;
+  background: linear-gradient(135deg, rgba(91,164,255,.25), rgba(139,111,255,.25));
+  opacity: 0; transition: opacity .35s;
+}
+.fc-glow:hover::after { opacity: 1; }
+
+@media(max-width:900px){
+  .feat-bento { grid-template-columns: 1fr 1fr; }
+  .fc-hero { grid-row: auto; min-height: auto; }
+}
+@media(max-width:560px){
+  .feat-bento { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════
+   HOW IT WORKS — timeline style
+══════════════════════════════════════ */
+.timeline {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0; margin-top: 64px; position: relative;
+}
+.timeline::before {
+  content: '';
+  position: absolute; top: 27px; left: calc(12.5% + 14px); right: calc(12.5% + 14px);
+  height: 1px; background: linear-gradient(to right, transparent, var(--border2), transparent);
+}
+.tl-step { padding: 0 20px; text-align: center; }
+.tl-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  margin: 0 auto 24px;
+  position: relative; z-index: 1;
+  transition: background .3s, border-color .3s, box-shadow .3s;
+}
+.tl-step:hover .tl-num {
+  background: var(--accent); color: #000;
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+}
+.tl-step h3 { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.tl-step p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+/* ══════════════════════════════════════
+   SCREENSHOT
+══════════════════════════════════════ */
+.shot-outer {
+  margin-top: 60px;
+  border-radius: 18px; overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.04),
+    0 40px 100px rgba(0,0,0,.7),
+    0 0 80px rgba(91,164,255,.06);
+  position: relative;
+}
+.shot-topbar {
+  display: flex; align-items: center; gap: 7px;
+  padding: 12px 16px; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.shot-dot { width: 10px; height: 10px; border-radius: 50%; }
+.shot-dot.r{background:#FF5F57} .shot-dot.y{background:#FEBC2E} .shot-dot.g{background:#28C840}
+.shot-label { margin-left: auto; font-size: 11px; color: var(--muted); letter-spacing: .06em; }
+.shot-img { display: block; width: 100%; height: auto; min-height: 360px; object-fit: cover;
+  background: linear-gradient(180deg,#0A0F1C,#060810);
+}
+.shot-placeholder {
+  min-height: 360px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg,#080C18 0%,#050810 100%);
+  font-size: 12px; letter-spacing: .1em; color: var(--muted);
+}
+.shot-footer { display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 18px; border-top: 1px solid var(--border); }
+.shot-footer span { font-size: 12px; color: var(--muted); }
+.shot-badge { font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--accent); }
+
+/* glow line under shot */
+.shot-glow { height: 1px; margin: 0 40px;
+  background: linear-gradient(to right, transparent, rgba(91,164,255,.3), transparent); }
+
+/* ══════════════════════════════════════
+   PRICING
+══════════════════════════════════════ */
+.plan-outer { max-width: 500px; margin: 64px auto 0; position: relative; }
+
+/* animated gradient border */
+.plan-border {
+  position: absolute; inset: -1px; border-radius: 18px; z-index: 0;
+  background: linear-gradient(var(--angle, 135deg), #5BA4FF, #8B6FFF, #5BA4FF);
+  background-size: 200% 200%;
+  animation: borderspin 4s linear infinite;
+  filter: blur(1.5px);
+}
+@keyframes borderspin { to { --angle: 495deg; } }
+@property --angle { syntax: '<angle>'; initial-value: 135deg; inherits: false; }
+
+.plan {
+  position: relative; z-index: 1;
+  background: var(--surface); border-radius: 17px;
+  padding: 48px 42px;
+}
+.plan-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg,#5BA4FF,#8B6FFF);
+  color: #fff; font-size: 10px; font-weight: 800;
+  letter-spacing: .18em; padding: 5px 16px;
+  border-radius: 100px; margin-bottom: 28px;
+}
+.plan h3 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.plan-desc { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+.plan-price { display: flex; align-items: baseline; gap: 8px; margin-bottom: 36px; }
+.plan-price-num { font-size: 80px; font-weight: 900; letter-spacing: -.05em; color: #fff; line-height: 1; }
+.plan-price-note { font-size: 13px; color: var(--muted); }
+.plan-list { list-style: none; margin-bottom: 36px; }
+.plan-list li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; color: var(--muted);
+  transition: color .2s;
+}
+.plan-list li:hover { color: var(--text); }
+.plan-list li:last-child { border-bottom: none; }
+.plan-list li b { color: #fff; font-weight: 600; }
+.check {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(91,164,255,.1); border: 1px solid rgba(91,164,255,.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+}
+.check::before { content: '✓'; color: var(--accent); }
+
+.btn-plan {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 17px; border-radius: 11px;
+  background: #fff; color: #000;
+  font-size: 15px; font-weight: 800; text-decoration: none;
+  position: relative; overflow: hidden;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.btn-plan::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0), rgba(255,255,255,.35));
+  opacity: 0; transition: opacity .3s;
+}
+.btn-plan:hover { transform: translateY(-2px); box-shadow: 0 20px 50px rgba(255,255,255,.2); }
+.btn-plan:hover::after { opacity: 1; }
+.plan-foot { font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px; }
+.plan-foot a { color: var(--accent); text-decoration: none; }
+
+/* ══════════════════════════════════════
+   FAQ
+══════════════════════════════════════ */
+.faq-list { max-width: 700px; margin: 60px auto 0; }
+details {
+  border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: 8px;
+  background: var(--bg);
+  transition: border-color .25s, background .25s;
+  overflow: hidden;
+}
+details:hover { border-color: var(--border2); }
+details[open] { border-color: rgba(91,164,255,.25); background: var(--surface); }
+summary {
+  cursor: pointer; list-style: none;
+  padding: 20px 22px;
+  font-size: 14px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  transition: color .2s;
+}
+summary::-webkit-details-marker { display: none; }
+details[open] summary { color: #fff; }
+.faq-ico {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--muted); line-height: 1;
+  transition: background .25s, border-color .25s, color .25s, transform .25s;
+}
+details[open] .faq-ico {
+  background: var(--accent); border-color: var(--accent); color: #000;
+  transform: rotate(45deg);
+}
+.faq-ico::after { content: '+'; }
+details p { padding: 0 22px 20px; font-size: 14px; color: var(--muted); line-height: 1.78; }
+details p b { color: #fff; }
+details p a { color: var(--accent); }
+
+/* ══════════════════════════════════════
+   FOOTER
+══════════════════════════════════════ */
+footer { border-top: 1px solid var(--border); padding: 48px 0 40px; background: var(--bg); }
+.foot { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 28px; }
+.foot-brand p { font-size: 13px; color: var(--muted); margin-top: 10px; max-width: 240px; line-height: 1.6; }
+.foot-links h4 { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--muted); margin-bottom: 14px; }
+.foot-links a { display: block; color: var(--muted); font-size: 13px; text-decoration: none; margin-bottom: 10px; transition: color .2s; }
+.foot-links a:hover { color: #fff; }
+.foot-bottom { border-top: 1px solid var(--border); margin-top: 40px; padding-top: 24px;
+  text-align: center; font-size: 12px; color: var(--muted); }
+
+/* ══════════════════════════════════════
+   SCROLL REVEAL
+══════════════════════════════════════ */
+.reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity .65s ease, transform .65s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* stagger children */
+.reveal-stagger > * {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .55s ease, transform .55s ease;
+}
+.reveal-stagger.visible > *:nth-child(1) { opacity:1;transform:none;transition-delay:.05s }
+.reveal-stagger.visible > *:nth-child(2) { opacity:1;transform:none;transition-delay:.12s }
+.reveal-stagger.visible > *:nth-child(3) { opacity:1;transform:none;transition-delay:.19s }
+.reveal-stagger.visible > *:nth-child(4) { opacity:1;transform:none;transition-delay:.26s }
+.reveal-stagger.visible > *:nth-child(5) { opacity:1;transform:none;transition-delay:.33s }
+.reveal-stagger.visible > *:nth-child(6) { opacity:1;transform:none;transition-delay:.40s }
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════ */
+@media(max-width:900px){
+  .feat-grid { grid-template-columns: repeat(2,1fr); }
+  .feat-big { grid-template-columns: 1fr; }
+  .timeline { grid-template-columns: repeat(2,1fr); gap: 40px; }
+  .timeline::before { display: none; }
+}
+@media(max-width:640px){
+  nav a:not(.nav-cta){ display:none; }
+  .hero h1 { font-size: 42px; }
+  .feat-grid { grid-template-columns: 1fr; }
+  .timeline { grid-template-columns: 1fr; }
+  .plan { padding: 32px 24px; }
+  .foot { flex-direction: column; }
+  body { cursor: auto; }
+  #cursor-dot, #cursor-ring, #cursor-trail { display: none; }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .reveal, .reveal-stagger>* { opacity:1; transform:none; transition:none; }
+  #cursor-dot,#cursor-ring,#cursor-trail{display:none}
+  body{cursor:auto}
+  .marquee-track{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+<canvas id="cursor-trail"></canvas>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <img src="img/logo.png" alt="Static Visual">
+      <div class="brand-text"><b>STATIC VISUAL</b><span>PRIVATE VISUAL SETUP</span></div>
+    </a>
+    <nav>
+      <a href="#features">Функции</a>
+      <a href="#shots">Скрины</a>
+      <a href="#pricing">Цена</a>
+      <a href="#faq">FAQ</a>
+      <a id="navLogin" href="login.html">Войти</a>
+      <a class="nav-cta" href="login.html">Начать — $5.99</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════ HERO ═══════════ -->
+<section class="hero" id="top">
+  <div class="hero-glow"></div>
+  <div class="hero-bg"><canvas id="grid-canvas"></canvas></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span class="live-dot"></span>
+      ENGINE ACTIVE &nbsp;·&nbsp; WINDOWS 10/11 &nbsp;·&nbsp; RUST
+    </div>
+
+    <h1>
+      Visual Settings.<br>
+      <span class="gradient-text">Powered by<br>Color Engine.</span>
+    </h1>
+
+    <p class="hero-sub">
+      Насыщенность, гамма, Night Mode и профили — без изменения файлов игры. Цветокоррекция на уровне системы.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn-white clickable" href="login.html">Получить доступ — $5.99</a>
+      <a class="btn-outline clickable" href="#shots">Посмотреть скрины</a>
+    </div>
+
+    <div class="hero-stats reveal-stagger">
+      <div class="stat-item">
+        <div class="stat-num">$5.99</div>
+        <div class="stat-lbl">ОДИН ПЛАТЁЖ</div>
+      </div>
+      <div class="divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">0ms</div>
+        <div class="stat-lbl">ВЛИЯНИЕ НА FPS</div>
+      </div>
+      <div class="divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">Win 10/11</div>
+        <div class="stat-lbl">ПОДДЕРЖКА ОС</div>
+      </div>
+      <div class="divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">∞</div>
+        <div class="stat-lbl">ОБНОВЛЕНИЯ</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    <div class="marquee-item"><span>Color Matrix Engine</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Night Mode</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Shadow Boost</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Hotkey Toggle</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Lifetime Access</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>No Inject</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Profile Presets</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Windows 10 / 11</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Auto Reset</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Discord Support</span><span class="dot"></span></div>
+    <!-- dupe for seamless loop -->
+    <div class="marquee-item"><span>Color Matrix Engine</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Night Mode</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Shadow Boost</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Hotkey Toggle</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Lifetime Access</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>No Inject</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Profile Presets</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Windows 10 / 11</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Auto Reset</span><span class="dot"></span></div>
+    <div class="marquee-item"><span>Discord Support</span><span class="dot"></span></div>
+  </div>
+</div>
+
+<!-- ═══════════ FEATURES ═══════════ -->
+<section class="section" id="features">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="section-label">Features</div>
+      <h2 class="section-head">Всё для чёткой картинки</h2>
+      <p class="section-sub">Полный контроль над цветом, гаммой и яркостью — без изменения файлов игры и без влияния на FPS.</p>
+    </div>
+
+    <div class="feat-bento reveal-stagger">
+
+      <!-- HERO card — Color Matrix, tall left -->
+      <div class="fc fc-hero clickable">
+        <div>
+          <div class="feat-ico">🎨</div>
+          <h3>Color Matrix Engine</h3>
+          <p>Насыщенность, контраст, яркость и hue-rotation на уровне системы. Краски видны даже в сумерках — без изменения файлов игры.</p>
+        </div>
+        <div class="fc-hero-bar"></div>
+      </div>
+
+      <!-- top right row -->
+      <div class="fc fc-sm fc-glow clickable">
+        <div class="feat-ico">🌙</div>
+        <h3>Night Mode</h3>
+        <p>Gamma 1.45 и Shadow Boost высвечивают тени: силуэты больше не сливаются.</p>
+      </div>
+
+      <div class="fc fc-sm clickable">
+        <div class="feat-ico">⚡</div>
+        <h3>Hotkey Toggle</h3>
+        <p>Бинд на любую клавишу. Одно нажатие — Night Mode, второе — возврат.</p>
+      </div>
+
+      <!-- bottom right row -->
+      <div class="fc fc-sm clickable">
+        <div class="feat-ico">📁</div>
+        <h3>Профили и пресеты</h3>
+        <p>Ready Presets и свои профили. Переключайся мгновенно.</p>
+      </div>
+
+      <div class="fc fc-sm fc-glow clickable">
+        <div class="feat-ico">🛡</div>
+        <h3>Без инжекта</h3>
+        <p>Ничего не патчится. Никакого риска бана — это не читерство.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ HOW IT WORKS ═══════════ -->
+<section class="section">
+  <div class="wrap">
+    <div class="reveal" style="text-align:center">
+      <div class="section-label-center"><div class="section-label">Как работает</div></div>
+      <h2 class="section-head">Купить · Активировать · Играть</h2>
+      <p class="section-sub" style="margin:0 auto">Четыре простых шага — и чистая картинка у вас на экране.</p>
+    </div>
+
+    <div class="timeline reveal-stagger">
+      <div class="tl-step">
+        <div class="tl-num">1</div>
+        <h3>Создать аккаунт</h3>
+        <p>Зарегистрируйся на сайте — займёт меньше минуты. Никакого лишнего.</p>
+      </div>
+      <div class="tl-step">
+        <div class="tl-num">2</div>
+        <h3>Купить доступ</h3>
+        <p>Один платёж $5.99 через Discord. Ключ появится в личном кабинете.</p>
+      </div>
+      <div class="tl-step">
+        <div class="tl-num">3</div>
+        <h3>Скачать и запустить</h3>
+        <p>Скачай приложение из кабинета, введи ключ — оно привяжется к твоему ПК.</p>
+      </div>
+      <div class="tl-step">
+        <div class="tl-num">4</div>
+        <h3>Настроить и играть</h3>
+        <p>Выбери пресет или настрой вручную. Хоткей — и Night Mode включён в игре.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SCREENSHOT ═══════════ -->
+<section class="section" id="shots">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="section-label">Preview</div>
+      <h2 class="section-head">Интерфейс приложения</h2>
+      <p class="section-sub">Чистый, быстрый, без лишнего. Всё управление — в одном окне.</p>
+    </div>
+
+    <div class="shot-outer reveal">
+      <div class="shot-topbar">
+        <span class="shot-dot r"></span>
+        <span class="shot-dot y"></span>
+        <span class="shot-dot g"></span>
+        <span class="shot-label">Static Visual — Color Control Panel</span>
+      </div>
+      <img class="shot-img" src="img/shot-ui.png" alt="Static Visual UI" loading="lazy"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="shot-placeholder" style="display:none">UI Screenshot — img/shot-ui.png</div>
+      <div class="shot-footer">
+        <span>Light &amp; Tone · Color &amp; Saturation · Night Vision</span>
+        <span class="shot-badge">LIVE PREVIEW</span>
+      </div>
+    </div>
+    <div class="shot-glow"></div>
+  </div>
+</section>
+
+<!-- ═══════════ PRICING ═══════════ -->
+<section class="section" id="pricing">
+  <div class="wrap" style="text-align:center">
+    <div class="reveal">
+      <div class="section-label-center"><div class="section-label">Доступ</div></div>
+      <h2 class="section-head">Один тариф. Навсегда.</h2>
+      <p class="section-sub" style="margin:0 auto">Никаких подписок. Один платёж — все функции и обновления навсегда.</p>
+    </div>
+
+    <div class="plan-outer reveal">
+      <div class="plan-border"></div>
+      <div class="plan">
+        <div class="plan-pill">✦ LIFETIME ACCESS</div>
+        <h3>Static Visual — Private</h3>
+        <p class="plan-desc">Один платёж. Все обновления включены. Навсегда.</p>
+        <div class="plan-price">
+          <span class="plan-price-num">$5.99</span>
+          <span class="plan-price-note">единоразово</span>
+        </div>
+        <ul class="plan-list">
+          <li><span class="check"></span><b>Полный доступ</b> ко всем функциям</li>
+          <li><span class="check"></span>Все пресеты и неограниченные профили</li>
+          <li><span class="check"></span>Night Mode + хоткеи</li>
+          <li><span class="check"></span>Windows 10 / 11, все мониторы</li>
+          <li><span class="check"></span>Обновления навсегда</li>
+          <li><span class="check"></span>Поддержка в Discord 24/7</li>
+        </ul>
+        <a class="btn-plan clickable" href="https://discord.gg/aU7uKCxv8" target="_blank" rel="noopener">Купить в Discord</a>
+        <p class="plan-foot">Оплата в Discord · Ключ в <a href="login.html">личном кабинете</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FAQ ═══════════ -->
+<section class="section" id="faq">
+  <div class="wrap" style="text-align:center">
+    <div class="reveal">
+      <div class="section-label-center"><div class="section-label">FAQ</div></div>
+      <h2 class="section-head">Частые вопросы</h2>
+    </div>
+
+    <div class="faq-list">
+      <details open class="reveal">
+        <summary>Это безопасно? Меня не забанят? <span class="faq-ico"></span></summary>
+        <p><b>Да, безопасно.</b> Static Visual не изменяет файлы игры, не инжектится в процесс и не взаимодействует с Rust. Это системная цветокоррекция на уровне Windows — как ночной режим или калибровка монитора.</p>
+      </details>
+      <details class="reveal">
+        <summary>Как работает цветокоррекция? <span class="faq-ico"></span></summary>
+        <p>Через Windows Color Matrix и гамма-таблицы монитора. Эффект применяется поверх всех окон, включая игру в оконном и borderless-режиме.</p>
+      </details>
+      <details class="reveal">
+        <summary>Это подписка? <span class="faq-ico"></span></summary>
+        <p><b>Нет.</b> Один платёж <b>$5.99</b> — и доступ навсегда, включая все будущие обновления. Никаких месячных платежей.</p>
+      </details>
+      <details class="reveal">
+        <summary>Как купить? <span class="faq-ico"></span></summary>
+        <p><b>Зарегистрируйся на сайте</b>, нажми «Купить доступ» — попадёшь в наш <a href="https://discord.gg/aU7uKCxv8" target="_blank" rel="noopener">Discord-сервер</a>. После оплаты ключ появится в личном кабинете (пара минут).</p>
+      </details>
+      <details class="reveal">
+        <summary>Какие системные требования? <span class="faq-ico"></span></summary>
+        <p>Windows 10 или 11. Никакого железного минимума нет — приложение лёгкое и не влияет на FPS в игре.</p>
+      </details>
+      <details class="reveal">
+        <summary>Как работает Night Mode? <span class="faq-ico"></span></summary>
+        <p>Night Mode поднимает гамму до 1.45 и высвечивает тени. Навешиваешь хоткей на любую клавишу — одно нажатие включает ночной пресет, второе возвращает обычную картинку.</p>
+      </details>
+      <details class="reveal">
+        <summary>Можно вернуть настройки монитора? <span class="faq-ico"></span></summary>
+        <p><b>Всегда.</b> При закрытии приложения все эффекты автоматически сбрасываются — экран возвращается к нативному виду. Внутри есть сброс каждого параметра, блока или всего сразу.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ FOOTER ═══════════ -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div class="foot-brand">
+        <a class="brand" href="#top">
+          <img src="img/logo.png" alt="Static Visual" style="width:32px;height:32px;border-radius:7px;object-fit:cover">
+          <div class="brand-text"><b>STATIC VISUAL</b><span>PRIVATE VISUAL SETUP</span></div>
+        </a>
+        <p>Чистая цветокоррекция для Rust. Без изменения файлов игры.</p>
+      </div>
+      <div class="foot-links">
+        <h4>НАВИГАЦИЯ</h4>
+        <a href="#features">Функции</a>
+        <a href="#pricing">Цены</a>
+        <a href="#faq">FAQ</a>
+        <a href="login.html">Войти</a>
+        <a href="account.html">Скачать приложение</a>
+      </div>
+      <div class="foot-links">
+        <h4>КОНТАКТЫ</h4>
+        <a href="https://discord.gg/aU7uKCxv8" target="_blank" rel="noopener">Discord</a>
+        <a href="account.html">Личный кабинет</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      © 2026 Static Visual &nbsp;·&nbsp; Не аффилировано с Facepunch Studios.
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════
+   AUDIO — кремовый click sound
+═══════════════════════════════════════ */
+var AudioCtx = window.AudioContext || window.webkitAudioContext;
+var audioCtx = null;
+
+function getCtx(){
+  if(!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playClick(){
+  try{
+    var ctx = getCtx();
+    // Warm creamy click: short sine burst + noise tail
+    var osc  = ctx.createOscillator();
+    var gain = ctx.createGain();
+    var filt = ctx.createBiquadFilter();
+
+    filt.type = 'lowpass';
+    filt.frequency.value = 2400;
+    filt.Q.value = .8;
+
+    osc.connect(filt);
+    filt.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1400, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(380, ctx.currentTime + .06);
+
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(.22, ctx.currentTime + .003);
+    gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + .1);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + .12);
+
+    // soft noise layer for warmth
+    var bufSize = ctx.sampleRate * .08;
+    var buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    for(var i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/bufSize,3);
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    var ng = ctx.createGain();
+    var nf = ctx.createBiquadFilter();
+    nf.type='bandpass'; nf.frequency.value=800; nf.Q.value=.5;
+    src.connect(nf); nf.connect(ng); ng.connect(ctx.destination);
+    ng.gain.value = .06;
+    src.start();
+  }catch(e){}
+}
+
+function playHover(){
+  try{
+    var ctx = getCtx();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type='sine';
+    osc.frequency.setValueAtTime(900, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime+.04);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(.04, ctx.currentTime+.005);
+    gain.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime+.06);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime+.07);
+  }catch(e){}
+}
+
+document.addEventListener('click', function(e){
+  playClick();
+  document.body.classList.add('cursor-click');
+  setTimeout(function(){ document.body.classList.remove('cursor-click'); }, 180);
+});
+
+var lastHover = 0;
+document.addEventListener('mouseover', function(e){
+  var t = e.target;
+  if(t.matches('a,button,summary,.fc,.plan-list li,.tl-step,details')){
+    var now = Date.now();
+    if(now - lastHover > 80){ playHover(); lastHover = now; }
+  }
+});
+
+/* ═══════════════════════════════════════
+   CURSOR
+═══════════════════════════════════════ */
+var dot  = document.getElementById('cursor-dot');
+var ring = document.getElementById('cursor-ring');
+var trailCanvas = document.getElementById('cursor-trail');
+var tctx = trailCanvas.getContext('2d');
+
+var mx = -200, my = -200;
+var rx = -200, ry = -200;
+var trail = []; // [{x,y,age}]
+
+function resizeTrail(){
+  trailCanvas.width  = window.innerWidth;
+  trailCanvas.height = window.innerHeight;
+}
+resizeTrail();
+window.addEventListener('resize', resizeTrail);
+
+document.addEventListener('mousemove', function(e){
+  mx = e.clientX; my = e.clientY;
+  dot.style.left = mx+'px'; dot.style.top = my+'px';
+  trail.push({x:mx, y:my, age:0});
+  if(trail.length > 36) trail.shift();
+});
+
+document.addEventListener('mouseover', function(e){
+  if(e.target.matches('a,button,summary,.fc,.nav-cta,.btn-white,.btn-outline,.btn-plan,.clickable')){
+    document.body.classList.add('cursor-hover');
+  }
+});
+document.addEventListener('mouseout', function(e){
+  if(e.target.matches('a,button,summary,.fc,.nav-cta,.btn-white,.btn-outline,.btn-plan,.clickable')){
+    document.body.classList.remove('cursor-hover');
+  }
+});
+
+// smooth ring follow
+function animCursor(){
+  rx += (mx - rx) * .12;
+  ry += (my - ry) * .12;
+  ring.style.left = rx+'px';
+  ring.style.top  = ry+'px';
+
+  // draw trail
+  tctx.clearRect(0,0,trailCanvas.width,trailCanvas.height);
+  for(var i=1;i<trail.length;i++){
+    var p0 = trail[i-1], p1 = trail[i];
+    var t = i/trail.length;
+    var alpha = t * t * .55;
+    var r = (1-t)*3.5 + .5;
+    tctx.beginPath();
+    tctx.moveTo(p0.x, p0.y);
+    tctx.lineTo(p1.x, p1.y);
+    tctx.strokeStyle = 'rgba(242,239,230,'+alpha+')';
+    tctx.lineWidth = r;
+    tctx.lineCap = 'round';
+    tctx.stroke();
+
+    // accent glow dots at every 4th point
+    if(i%4===0){
+      tctx.beginPath();
+      tctx.arc(p1.x, p1.y, r*1.2, 0, Math.PI*2);
+      tctx.fillStyle = 'rgba(91,164,255,'+(alpha*.6)+')';
+      tctx.fill();
+    }
+  }
+
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+/* ═══════════════════════════════════════
+   HERO GRID CANVAS
+═══════════════════════════════════════ */
+(function(){
+  var c = document.getElementById('grid-canvas');
+  if(!c) return;
+  var ctx = c.getContext('2d');
+  var W,H,vx,vy;
+
+  function resize(){
+    W = c.width  = c.parentElement.offsetWidth;
+    H = c.height = c.parentElement.offsetHeight;
+    vx = W/2; vy = H * .52;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  var t = 0;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    t += .003;
+
+    // perspective grid
+    var lines = 14;
+    for(var i=0;i<=lines;i++){
+      var frac = i/lines;
+      // horizontal
+      var y = vy + (H - vy)*Math.pow(frac,1.6);
+      var alpha = frac*.07 + Math.sin(t + frac*3)*.01;
+      ctx.strokeStyle = 'rgba(255,255,255,'+alpha+')';
+      ctx.lineWidth = .8;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+    var cols = 18;
+    for(var j=0;j<=cols;j++){
+      var xb = (j/cols)*W;
+      var alpha2 = .04 + Math.sin(t*1.3 + j*.4)*.012;
+      ctx.strokeStyle='rgba(255,255,255,'+alpha2+')';
+      ctx.lineWidth=.8;
+      ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(xb,H); ctx.stroke();
+    }
+
+    // vanishing point glow
+    var grd = ctx.createRadialGradient(vx,vy,0,vx,vy,120);
+    grd.addColorStop(0,'rgba(91,164,255,.14)');
+    grd.addColorStop(1,'rgba(91,164,255,0)');
+    ctx.beginPath(); ctx.arc(vx,vy,120,0,Math.PI*2);
+    ctx.fillStyle=grd; ctx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ═══════════════════════════════════════
+   FEAT CARD MOUSE GRADIENT
+═══════════════════════════════════════ */
+document.querySelectorAll('.fc').forEach(function(card){
+  card.addEventListener('mousemove', function(e){
+    var r = card.getBoundingClientRect();
+    var x = ((e.clientX-r.left)/r.width*100).toFixed(1)+'%';
+    var y = ((e.clientY-r.top)/r.height*100).toFixed(1)+'%';
+    card.style.setProperty('--mx',x);
+    card.style.setProperty('--my',y);
+  });
+});
+
+/* ═══════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════ */
+var reveals = document.querySelectorAll('.reveal, .reveal-stagger');
+var io = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target); }
+  });
+}, {threshold:.12});
+reveals.forEach(function(el){ io.observe(el); });
+
+// hero stats visible immediately
+var hs = document.querySelector('.hero-stats');
+if(hs) setTimeout(function(){ hs.classList.add('visible'); }, 600);
+
+})();
+</script>
+<script src="assets/auth.js"></script>
+<script>
+(function(){
+  var t = window.svGetToken ? svGetToken() : "";
+  if (!t) return;
+  fetch((window.API_BASE||"")+"/api/me", { method: "POST", headers: { "Authorization": "Bearer " + t, "Content-Type": "application/json" } })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res && res.ok) {
+        var a = document.getElementById("navLogin");
+        if (a) { a.textContent = res.user.isAdmin ? "Админка" : "Кабинет"; a.href = res.user.isAdmin ? "admin.html" : "account.html"; }
+      }
+    }).catch(function(){});
+})();
+</script>
+</body>
+</html>
