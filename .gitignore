@@ -1,0 +1,16 @@
+# Сборка
+bin/
+obj/
+dist/
+*.user
+
+# Deno
+node_modules/
+.deno/
+*.sqlite3
+
+# Секретные дампы базы — НЕ коммитить
+deno_migration/netlify_dump.json
+
+# Локальное
+.env
