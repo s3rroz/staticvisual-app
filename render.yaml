@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: staticvisual
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: ADMIN_EMAILS
+        value: staticvisual@admin.cc
+      - key: AFFILIATE_EMAILS
+        sync: false
+      - key: AFFILIATE_RATE
+        value: "0.2"
+      - key: MIGRATE_TOKEN
+        sync: false
