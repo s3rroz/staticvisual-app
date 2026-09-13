@@ -14,3 +14,4 @@ deno_migration/netlify_dump.json
 
 # Локальное
 .env
+cf_test.mjs
